@@ -1,0 +1,66 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+    background-color: #5B4F85;
+        font-family: 'Roboto', sans-serif;
+}
+
+#upload-container, #loading, #downloadLink {
+    margin: 20px;
+    text-align: center;
+}
+#progress{
+    color: #f7eff2;
+    font-size: 30px;
+    text-align: center;
+}
+.btn {
+    display: inline-block;
+    padding: 20px 40px;
+    background-color: #8D758D;
+    color: #f7eff2;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 50px;
+    box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); /* Добавляем тень */
+    transition: background-color 0.1s ease;
+      text-decoration: none;
+}
+
+.btn:hover{
+    background-color: #a48dad;
+
+}
+.hidden {
+    display: none;
+}
+
+#fileName {
+    margin-top: 10px;
+    font-size: 34px;
+    border-radius: 10px;
+    background-color: #f7eff2;
+    padding: 20px 40px;
+    margin-bottom: 20px;
+    color: #b18499;
+    text-align: center;
+    box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); /* Добавляем тень */
+}
+
+#downloadLink{
+    flex-direction: column;
+    margin-top: 10px;
+    font-size: 34px;
+    border-radius: 10px;
+    background-color: #f7eff2;
+    padding: 20px 40px;
+    margin-bottom: 20px;
+    color: #b18499;
+    text-align: center;
+    box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); /* Добавляем тень */
+
+}

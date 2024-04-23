@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Картунізація відео</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+</head>
+<body>
+    <div id="content">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="videoFile" name="video" hidden />
+            <label for="videoFile" id="fileLabel" class="btn">Оберіть файл</label>
+            <div id="fileName" class="hidden"></div>
+            <button type="submit" id="processBtn" class="btn hidden">Обробити</button>
+        </form>
+        <div id="loading" class="hidden">
+            <img src="/static/loading.gif" alt="Loading..." />
+            <div id="progress"></div>
+        </div>
+        <div id="downloadLink" class="hidden"></div>
+    </div>
+    <script src="/static/upload.js"></script>
+</body>
+</html>
