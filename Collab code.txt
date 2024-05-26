@@ -1,0 +1,129 @@
+from google.colab import drive  # Імпорт бібліотеки для підключення до Google Диску
+import os  # Імпорт модуля для роботи з файловою системою
+import numpy as np  # Імпорт бібліотеки для роботи з масивами
+import tensorflow as tf  # Імпорт бібліотеки TensorFlow для побудови та навчання нейронних мереж
+from tensorflow.keras import layers, models  # Імпорт необхідних модулів для створення моделей та шарів нейронних мереж
+from tensorflow.keras.preprocessing.image import load_img, img_to_array  # Імпорт функцій для завантаження та перетворення зображень у масиви
+
+# Підключення до Google Диску
+drive.mount('/content/drive')
+
+# Параметри
+image_size = (256, 256)  # Розмір зображення для зміни масштабу
+batch_size = 32  # Розмір пакету для навчання (кількість зображень, які будуть оброблятися за одну ітерацію)
+epochs = 200  # Кількість епох для навчання (повних проходів через весь навчальний набір)
+base_dir = '/content/drive/MyDrive/Training'  # Базова директорія, де зберігаються всі дані та результати
+dataset0_path = os.path.join(base_dir, 'DATASET0/Dataset0')  # Шлях до директорії з початковими зображеннями
+dataset1_path = os.path.join(base_dir, 'DATASET/Dataset1')  # Шлях до директорії з обробленими зображеннями
+checkpoint_dir = os.path.join(base_dir, 'checkpoints')  # Директорія для збереження контрольних точок моделі під час навчання
+final_model_path = os.path.join(base_dir, 'unet_model_final.h5')  # Шлях до фінальної збереженої моделі
+
+# Створення директорії для контрольних точок, якщо її немає
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+# Перевірка існування папок і виведення їх вмісту
+folders = [dataset0_path, dataset1_path]  # Список папок, які необхідно перевірити
+for folder in folders:  # Ітерація по списку папок
+    if os.path.exists(folder):  # Перевірка існування директорії
+        print(f"{folder} існує. Вміст:")  # Виведення повідомлення про існування директорії
+        print(os.listdir(folder))  # Виведення списку файлів у директорії
+    else:
+        print(f"{folder} не існує. Перевірте правильність шляху.")  # Виведення повідомлення про неіснування директорії
+
+# Функція для завантаження зображень з папки
+def load_images_from_folder(folder, image_size, resize=True):
+    images = []  # Список для збереження завантажених зображень
+    original_sizes = []  # Список для збереження оригінальних розмірів зображень
+    filenames = sorted([f for f in os.listdir(folder) if f.endswith(('png', 'jpg', 'jpeg'))], key=lambda x: int(''.join(filter(str.isdigit, x))))  # Сортування файлів за числом у назві файлу
+    for filename in filenames:  # Ітерація по кожному файлу у відсортованому списку
+        img_path = os.path.join(folder, filename)  # Формування повного шляху до зображення
+        img = load_img(img_path)  # Завантаження зображення з файлу
+        original_sizes.append(img.size)  # Збереження оригінального розміру зображення
+        if resize:  # Якщо необхідно змінити розмір зображення
+            img = img.resize(image_size)  # Зміна розміру зображення до заданого розміру
+        img_array = img_to_array(img)  # Перетворення зображення у масив
+        images.append(img_array)  # Додавання масиву зображення до списку
+    return images, filenames, original_sizes  # Повернення списку зображень, назв файлів та оригінальних розмірів
+
+# Завантаження даних
+dataset0_images, _, _ = load_images_from_folder(dataset0_path, image_size)  # Завантаження зображень з Dataset0
+dataset1_images, _, _ = load_images_from_folder(dataset1_path, image_size)  # Завантаження зображень з Dataset1
+
+# Нормалізація даних
+dataset0_images = np.array(dataset0_images) / 255.0  # Нормалізація пікселів зображень з Dataset0 до діапазону [0, 1]
+dataset1_images = np.array(dataset1_images) / 255.0  # Нормалізація пікселів зображень з Dataset1 до діапазону [0, 1]
+
+# Створення моделі (приклад моделі U-Net)
+def unet_model(input_size):
+    inputs = layers.Input(shape=input_size)  # Вхідний шар з розміром вхідних даних
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)  # Перший шар згортки
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c1)  # Другий шар згортки
+    p1 = layers.MaxPooling2D((2, 2))(c1)  # Перший шар максимального об'єднання
+
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(p1)  # Другий блок згорток
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c2)  # Другий шар згортки у другому блоці
+    p2 = layers.MaxPooling2D((2, 2))(c2)  # Другий шар максимального об'єднання
+
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(p2)  # Третій блок згорток
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c3)  # Другий шар згортки у третьому блоці
+    p3 = layers.MaxPooling2D((2, 2))(c3)  # Третій шар максимального об'єднання
+
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(p3)  # Четвертий блок згорток
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(c4)  # Другий шар згортки у четвертому блоці
+    p4 = layers.MaxPooling2D((2, 2))(c4)  # Четвертий шар максимального об'єднання
+
+    c5 = layers.Conv2D(1024, (3, 3), activation='relu', padding='same')(p4)  # П'ятий блок згорток (бутилка)
+    c5 = layers.Conv2D(1024, (3, 3), activation='relu', padding='same')(c5)  # Другий шар згортки у п'ятому блоці
+
+    u6 = layers.Conv2DTranspose(512, (2, 2), strides=(2, 2), padding='same')(c5)  # Деконволюція (транспонована згортка) для першого шару розгортання
+    u6 = layers.concatenate([u6, c4])  # Конкатенація розгорнутих даних з даними з четвертого блоку згорток
+    c6 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(u6)  # Згортка після конкатенації
+    c6 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(c6)  # Другий шар згортки
+
+    u7 = layers.Conv2DTranspose(256, (2, 2), strides=(2, 2), padding='same')(c6)  # Деконволюція для другого шару розгортання
+    u7 = layers.concatenate([u7, c3])  # Конкатенація розгорнутих даних з даними з третього блоку згорток
+    c7 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(u7)  # Згортка після конкатенації
+    c7 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c7)  # Другий шар згортки
+
+    u8 = layers.Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(c7)  # Деконволюція для третього шару розгортання
+    u8 = layers.concatenate([u8, c2])  # Конкатенація розгорнутих даних з даними з другого блоку згорток
+    c8 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(u8)  # Згортка після конкатенації
+    c8 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c8)  # Другий шар згортки
+
+    u9 = layers.Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(c8)  # Деконволюція для четвертого шару розгортання
+    u9 = layers.concatenate([u9, c1])  # Конкатенація розгорнутих даних з даними з першого блоку згорток
+    c9 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(u9)  # Згортка після конкатенації
+    c9 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c9)  # Другий шар згортки
+
+    outputs = layers.Conv2D(3, (1, 1), activation='sigmoid')(c9)  # Вихідний шар з активацією сигмоїди
+
+    model = models.Model(inputs=[inputs], outputs=[outputs])  # Створення моделі з вхідними та вихідними шарами
+    return model  # Повернення створеної моделі
+
+# Створення нової моделі
+print("Створення нової моделі.")
+model = unet_model(input_size=(image_size[0], image_size[1], 3))  # Виклик функції для створення моделі
+
+model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])  # Компіляція моделі з вказаним оптимізатором, функцією втрат та метриками
+
+# Колбек для збереження контрольної точки кожні 5 епох
+class CustomCheckpoint(tf.keras.callbacks.Callback):  # Створення класу для користувацького колбеку
+    def __init__(self, save_freq, checkpoint_dir):
+        super().__init__()
+        self.save_freq = save_freq  # Частота збереження контрольних точок
+        self.checkpoint_dir = checkpoint_dir  # Директорія для збереження контрольних точок
+
+    def on_epoch_end(self, epoch, logs=None):  # Метод, який виконується в кінці кожної епохи
+        if (epoch + 1) % self.save_freq == 0:  # Перевірка, чи необхідно зберігати контрольну точку
+            checkpoint_path = os.path.join(self.checkpoint_dir, f'in_training_process_{epoch + 1}.h5')  # Шлях до контрольної точки
+            self.model.save(checkpoint_path)  # Збереження моделі
+            print(f'Контрольна точка збережена: {checkpoint_path}')  # Виведення повідомлення про збереження контрольної точки
+
+checkpoint_callback = CustomCheckpoint(save_freq=5, checkpoint_dir=checkpoint_dir)  # Створення об'єкту колбеку з вказаною частотою збереження
+
+# Навчання моделі
+model.fit(dataset0_images, dataset1_images, epochs=epochs, validation_split=0.2, callbacks=[checkpoint_callback])  # Навчання моделі з вказаними параметрами
+
+# Збереження остаточної моделі
+model.save(final_model_path)  # Збереження навченої моделі
+print(f"Остаточна модель збережена в {final_model_path}")  # Виведення повідомлення про збереження моделі
